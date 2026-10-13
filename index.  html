@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title> mr .Space Blaster
+      made with chinuka
+    </title>
+
+    <style>
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #02020c;
+            font-family: Arial, sans-serif;
+        }
+
+        /* GAME BACKGROUND */
+        #game {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+            overflow: hidden;
+
+            background:
+                radial-gradient(circle at 50% 120%, rgba(80, 30, 180, 0.45), transparent 45%),
+                radial-gradient(circle at 10% 20%, rgba(30, 80, 180, 0.35), transparent 35%),
+                radial-gradient(circle at 90% 40%, rgba(150, 30, 180, 0.30), transparent 35%),
+                linear-gradient(to bottom, #02020c, #08052b 50%, #12052d);
+        }
+
+        /* STARS */
+        #game::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+
+            background-image:
+                radial-gradient(circle, white 1px, transparent 1px),
+                radial-gradient(circle, white 1px, transparent 1px),
+                radial-gradient(circle, white 2px, transparent 2px);
+
+            background-size: 90px 90px, 140px 140px, 220px 220px;
+            background-position: 10px 20px, 50px 80px, 100px 30px;
+
+            opacity: 0.7;
+            animation: starsMove 12s linear infinite;
+            pointer-events: none;
+        }
+
+        @keyframes starsMove {
+            from {
+                transform: translateY(0);
+            }
+
+            to {
+                transform: translateY(180px);
+            }
+        }
+
+        /* ROCKET */
+        #rocket {
+            position: absolute;
+            font-size: 65px;
+            left: 50%;
+            top: 75%;
+            user-select: none;
+            z-index: 5;
+        }
+
+        /* BULLET */
+        .bullet {
+            position: absolute;
+            font-size: 28px;
+            pointer-events: none;
+            z-index: 6;
+        }
+
+        /* COIN */
+        .coin {
+            position: absolute;
+            font-size: 35px;
+            z-index: 4;
+        }
+
+        /* ASTEROID */
+        .asteroid {
+            position: absolute;
+            font-size: 50px;
+            z-index: 4;
+        }
+
+        /* EXPLOSION */
+        .explosion {
+            position: absolute;
+            font-size: 60px;
+            z-index: 10;
+            pointer-events: none;
+            animation: explode 0.4s ease-out forwards;
+        }
+
+        @keyframes explode {
+            0% {
+                transform: scale(0.3);
+                opacity: 1;
+            }
+
+            100% {
+                transform: scale(2);
+                opacity: 0;
+            }
+        }
+
+        /* SCORE */
+        #score {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            font-size: 28px;
+            font-weight: bold;
+            z-index: 20;
+        }
+
+        /* HITS */
+        #hits {
+            position: absolute;
+            top: 60px;
+            left: 20px;
+            color: white;
+            font-size: 22px;
+            font-weight: bold;
+            z-index: 20;
+        }
+
+        /* MADE WITH */
+        #madeWith {
+            position: absolute;
+            bottom: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            font-size: 16px;
+            opacity: 0.8;
+            z-index: 20;
+        }
+
+        /* GAME OVER SCREEN */
+        #gameOver {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+
+            color: white;
+            text-align: center;
+
+            z-index: 30;
+
+            background: rgba(0, 0, 0, 0.85);
+            padding: 30px 50px;
+            border-radius: 20px;
+        }
+
+        #gameOver h1 {
+            margin: 0 0 10px;
+            font-size: 50px;
+        }
+
+        #restart {
+            font-size: 20px;
+            padding: 10px 25px;
+            cursor: pointer;
+            border: none;
+            border-radius: 10px;
+        }
+
+    </style>
+</head>
+
+<body>
+
+<div id="game">
+
+    <div id="score">Score: 0</div>
+
+    <div id="hits">Asteroid Hits: 0 / 3</div>
+
+    <div id="rocket">🚀</div>
+
+    <div id="madeWith">Made with Chinuka</div>
+
+    <div id="gameOver">
+        <h1>GAME OVER</h1>
+
+        <p id="finalScore">Score: 0</p>
+
+        <button id="restart">Restart</button>
+    </div>
+
+</div>
+
+
+<script>
+
+    const rocket = document.getElementById("rocket");
+    const game = document.getElementById("game");
+
+    const scoreText = document.getElementById("score");
+    const hitsText = document.getElementById("hits");
+
+    const gameOverScreen = document.getElementById("gameOver");
+    const finalScore = document.getElementById("finalScore");
+
+    const restartButton = document.getElementById("restart");
+
+
+    let x = window.innerWidth / 2 - 32;
+    let y = window.innerHeight * 0.75;
+
+    const speed = 7;
+
+    const keys = {};
+
+    let score = 0;
+
+    let hits = 0;
+    const maxHits = 3;
+
+    let gameRunning = true;
+
+
+    /* KEYBOARD */
+
+    document.addEventListener("keydown", function(event) {
+
+        keys[event.key] = true;
+
+        if (event.code === "Space" && gameRunning) {
+
+            event.preventDefault();
+
+            shoot();
+        }
+
+    });
+
+
+    document.addEventListener("keyup", function(event) {
+
+        keys[event.key] = false;
+
+    });
+
+
+    /* ROCKET MOVEMENT */
+
+    function moveRocket() {
+
+        if (!gameRunning) return;
+
+
+        if (keys["ArrowLeft"]) {
+
+            x -= speed;
+
+        }
+
+
+        if (keys["ArrowRight"]) {
+
+            x += speed;
+
+        }
+
+
+        if (keys["ArrowUp"]) {
+
+            y -= speed;
+
+        }
+
+
+        if (keys["ArrowDown"]) {
+
+            y += speed;
+
+        }
+
+
+        x = Math.max(
+            0,
+            Math.min(window.innerWidth - 65, x)
+        );
+
+
+        y = Math.max(
+            0,
+            Math.min(window.innerHeight - 80, y)
+        );
+
+
+        rocket.style.left = x + "px";
+
+        rocket.style.top = y + "px";
+
+
+        requestAnimationFrame(moveRocket);
+
+    }
+
+
+    /* SHOOT */
+
+    function shoot() {
+
+        const bullet = document.createElement("div");
+
+        bullet.className = "bullet";
+
+        bullet.textContent = "🔥";
+
+
+        bullet.style.left =
+            (x + 20) + "px";
+
+
+        bullet.style.top =
+            (y - 10) + "px";
+
+
+        game.appendChild(bullet);
+
+
+        function moveBullet() {
+
+            if (!gameRunning) {
+
+                bullet.remove();
+
+                return;
+
+            }
+
+
+            let bulletY =
+                parseInt(bullet.style.top);
+
+
+            bulletY -= 12;
+
+
+            bullet.style.top =
+                bulletY + "px";
+
+
+            document
+                .querySelectorAll(".asteroid")
+                .forEach(function(asteroid) {
+
+
+                    if (collision(bullet, asteroid)) {
+
+
+                        const explosion =
+                            document.createElement("div");
+
+
+                        explosion.className =
+                            "explosion";
+
+
+                        explosion.textContent =
+                            "💥";
+
+
+                        explosion.style.left =
+                            asteroid.style.left;
+
+
+                        explosion.style.top =
+                            asteroid.style.top;
+
+
+                        game.appendChild(explosion);
+
+
+                        setTimeout(function() {
+
+                            explosion.remove();
+
+                        }, 400);
+
+
+                        asteroid.remove();
+
+                        bullet.remove();
+
+
+                        score += 5;
+
+
+                        scoreText.textContent =
+                            "Score: " + score;
+
+                    }
+
+                });
+
+
+            if (bulletY < -50) {
+
+                bullet.remove();
+
+                return;
+
+            }
+
+
+            requestAnimationFrame(moveBullet);
+
+        }
+
+
+        moveBullet();
+
+    }
+
+
+    /* CREATE COIN */
+
+    function createCoin() {
+
+        if (!gameRunning) return;
+
+
+        const coin =
+            document.createElement("div");
+
+
+        coin.className =
+            "coin";
+
+
+        coin.textContent =
+            "🪙";
+
+
+        coin.style.left =
+            Math.random() *
+            (window.innerWidth - 50) +
+            "px";
+
+
+        coin.style.top =
+            "-50px";
+
+
+        game.appendChild(coin);
+
+
+        function moveCoin() {
+
+            if (!gameRunning) {
+
+                coin.remove();
+
+                return;
+
+            }
+
+
+            let top =
+                parseInt(coin.style.top);
+
+
+            top += 4;
+
+
+            coin.style.top =
+                top + "px";
+
+
+            if (collision(rocket, coin)) {
+
+                coin.remove();
+
+
+                score += 1;
+
+
+                scoreText.textContent =
+                    "Score: " + score;
+
+
+                return;
+
+            }
+
+
+            if (top > window.innerHeight) {
+
+                coin.remove();
+
+                return;
+
+            }
+
+
+            requestAnimationFrame(moveCoin);
+
+        }
+
+
+        moveCoin();
+
+    }
+
+
+    /* CREATE ASTEROID */
+
+    function createAsteroid() {
+
+        if (!gameRunning) return;
+
+
+        const asteroid =
+            document.createElement("div");
+
+
+        asteroid.className =
+            "asteroid";
+
+
+        asteroid.textContent =
+            "☄️";
+
+
+        asteroid.style.left =
+            Math.random() *
+            (window.innerWidth - 60) +
+            "px";
+
+
+        asteroid.style.top =
+            "-60px";
+
+
+        game.appendChild(asteroid);
+
+
+        function moveAsteroid() {
+
+            if (!gameRunning) {
+
+                asteroid.remove();
+
+                return;
+
+            }
+
+
+            let top =
+                parseInt(asteroid.style.top);
+
+
+            top += 5;
+
+
+            asteroid.style.top =
+                top + "px";
+
+
+            /* ROCKET HIT */
+
+            if (collision(rocket, asteroid)) {
+
+
+                asteroid.remove();
+
+
+                hits++;
+
+
+                hitsText.textContent =
+                    "Asteroid Hits: " +
+                    hits +
+                    " / " +
+                    maxHits;
+
+
+                if (hits >= maxHits) {
+
+                    gameOver();
+
+                }
+
+
+                return;
+
+            }
+
+
+            if (top > window.innerHeight) {
+
+                asteroid.remove();
+
+                return;
+
+            }
+
+
+            requestAnimationFrame(moveAsteroid);
+
+        }
+
+
+        moveAsteroid();
+
+    }
+
+
+    /* COLLISION */
+
+    function collision(a, b) {
+
+        const rect1 =
+            a.getBoundingClientRect();
+
+
+        const rect2 =
+            b.getBoundingClientRect();
+
+
+        return (
+
+            rect1.left < rect2.right &&
+
+            rect1.right > rect2.left &&
+
+            rect1.top < rect2.bottom &&
+
+            rect1.bottom > rect2.top
+
+        );
+
+    }
+
+
+    /* GAME OVER */
+
+    function gameOver() {
+
+        gameRunning = false;
+
+
+        finalScore.textContent =
+            "Final Score: " + score;
+
+
+        gameOverScreen.style.display =
+            "block";
+
+    }
+
+
+    /* RESTART */
+
+    restartButton.addEventListener(
+        "click",
+        function() {
+
+            location.reload();
+
+        }
+    );
+
+
+    /* SPAWN COINS */
+
+    setInterval(function() {
+
+        if (gameRunning) {
+
+            createCoin();
+
+        }
+
+    }, 1500);
+
+
+    /* SPAWN ASTEROIDS */
+
+    setInterval(function() {
+
+        if (gameRunning) {
+
+            createAsteroid();
+
+        }
+
+    }, 1200);
+
+
+    moveRocket();
+
+</script>
+
+</body>
+</html>
