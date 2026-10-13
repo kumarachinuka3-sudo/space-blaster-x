@@ -1,0 +1,459 @@
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    overflow: hidden;
+    font-family: Arial, sans-serif;
+    background: #05051a;
+}
+
+#game {
+    width: 100vw;
+    height: 100vh;
+    position: relative;
+    overflow: hidden;
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rocket Game</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #05051a;
+            font-family: Arial, sans-serif;
+        }
+
+        #game {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+            overflow: hidden;
+            background:
+                radial-gradient(circle at 20% 20%, #29296b, transparent 25%),
+                radial-gradient(circle at 80% 70%, #40105c, transparent 30%),
+                linear-gradient(#05051a, #10052b);
+        }
+
+        #rocket {
+            position: absolute;
+            font-size: 65px;
+            left: 50%;
+            top: 75%;
+            user-select: none;
+            z-index: 5;
+        }
+
+        .bullet {
+            position: absolute;
+            font-size: 28px;
+            pointer-events: none;
+            z-index: 4;
+        }
+
+        .coin {
+            position: absolute;
+            font-size: 35px;
+            z-index: 3;
+        }
+
+        .asteroid {
+            position: absolute;
+            font-size: 50px;
+            z-index: 3;
+        }
+
+        #score {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            font-size: 28px;
+            font-weight: bold;
+            z-index: 20;
+        }
+
+        #gameOver {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            text-align: center;
+            z-index: 30;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 30px 50px;
+            border-radius: 20px;
+        }
+
+        #gameOver h1 {
+            margin: 0 0 10px;
+            font-size: 50px;
+        }
+
+        #restart {
+            font-size: 20px;
+            padding: 10px 20px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+
+<div id="game">
+
+    <div id="score">Score: 0</div>
+
+    <div id="rocket">🚀</div>
+
+    <div id="gameOver">
+        <h1>GAME OVER</h1>
+        <p id="finalScore">Score: 0</p>
+        <button id="restart">Restart</button>
+    </div>
+
+</div>
+
+<script>
+
+    const rocket = document.getElementById("rocket");
+    const game = document.getElementById("game");
+    const scoreText = document.getElementById("score");
+    const gameOverScreen = document.getElementById("gameOver");
+    const finalScore = document.getElementById("finalScore");
+    const restartButton = document.getElementById("restart");
+
+    let x = window.innerWidth / 2 - 32;
+    let y = window.innerHeight * 0.75;
+
+    const speed = 7;
+    const keys = {};
+
+    let score = 0;
+    let gameRunning = true;
+
+    // Keyboard controls
+    document.addEventListener("keydown", function(event) {
+
+        keys[event.key] = true;
+
+        // Space = Shoot
+        if (event.code === "Space" && gameRunning) {
+            event.preventDefault();
+            shoot();
+        }
+    });
+
+    document.addEventListener("keyup", function(event) {
+        keys[event.key] = false;
+    });
+
+
+    // Rocket movement
+    function moveRocket() {
+
+        if (!gameRunning) return;
+
+        if (keys["ArrowLeft"]) {
+            x -= speed;
+        }
+
+        if (keys["ArrowRight"]) {
+            x += speed;
+        }
+
+        if (keys["ArrowUp"]) {
+            y -= speed;
+        }
+
+        if (keys["ArrowDown"]) {
+            y += speed;
+        }
+
+        x = Math.max(0, Math.min(window.innerWidth - 65, x));
+        y = Math.max(0, Math.min(window.innerHeight - 80, y));
+
+        rocket.style.left = x + "px";
+        rocket.style.top = y + "px";
+
+        requestAnimationFrame(moveRocket);
+    }
+
+
+    // Shoot
+    function shoot() {
+
+        const bullet = document.createElement("div");
+
+        bullet.className = "bullet";
+        bullet.textContent = "🔥";
+
+        bullet.style.left = (x + 20) + "px";
+        bullet.style.top = (y - 10) + "px";
+
+        game.appendChild(bullet);
+
+        function moveBullet() {
+
+            if (!gameRunning) {
+                bullet.remove();
+                return;
+            }
+
+            let bulletY = parseInt(bullet.style.top);
+
+            bulletY -= 12;
+
+            bullet.style.top = bulletY + "px";
+
+            // Hit asteroid
+            document.querySelectorAll(".asteroid").forEach(function(asteroid) {
+
+                if (collision(bullet, asteroid)) {
+
+                    asteroid.remove();
+                    bullet.remove();
+
+                    score += 5;
+                    scoreText.textContent = "Score: " + score;
+                }
+
+            });
+
+            if (bulletY < -50) {
+                bullet.remove();
+                return;
+            }
+
+            requestAnimationFrame(moveBullet);
+        }
+
+        moveBullet();
+    }
+
+
+    // Create coin
+    function createCoin() {
+
+        if (!gameRunning) return;
+
+        const coin = document.createElement("div");
+
+        coin.className = "coin";
+        coin.textContent = "🪙";
+
+        coin.style.left =
+            Math.random() * (window.innerWidth - 50) + "px";
+
+        coin.style.top = "-50px";
+
+        game.appendChild(coin);
+
+        function moveCoin() {
+
+            if (!gameRunning) {
+                coin.remove();
+                return;
+            }
+
+            let top = parseInt(coin.style.top);
+
+            top += 4;
+
+            coin.style.top = top + "px";
+
+            // Collect coin
+            if (collision(rocket, coin)) {
+
+                coin.remove();
+
+                score += 1;
+
+                scoreText.textContent = "Score: " + score;
+
+                return;
+            }
+
+            if (top > window.innerHeight) {
+                coin.remove();
+                return;
+            }
+
+            requestAnimationFrame(moveCoin);
+        }
+
+        moveCoin();
+    }
+
+
+    // Create asteroid
+    function createAsteroid() {
+
+        if (!gameRunning) return;
+
+        const asteroid = document.createElement("div");
+
+        asteroid.className = "asteroid";
+        asteroid.textContent = "☄️";
+
+        asteroid.style.left =
+            Math.random() * (window.innerWidth - 60) + "px";
+
+        asteroid.style.top = "-60px";
+
+        game.appendChild(asteroid);
+
+        function moveAsteroid() {
+
+            if (!gameRunning) {
+                asteroid.remove();
+                return;
+            }
+
+            let top = parseInt(asteroid.style.top);
+
+            top += 5;
+
+            asteroid.style.top = top + "px";
+
+            // Asteroid hits rocket
+            if (collision(rocket, asteroid)) {
+
+                gameOver();
+                return;
+            }
+
+            if (top > window.innerHeight) {
+                asteroid.remove();
+                return;
+            }
+
+            requestAnimationFrame(moveAsteroid);
+        }
+
+        moveAsteroid();
+    }
+
+
+    // Collision detection
+    function collision(a, b) {
+
+        const rect1 = a.getBoundingClientRect();
+        const rect2 = b.getBoundingClientRect();
+
+        return (
+            rect1.left < rect2.right &&
+            rect1.right > rect2.left &&
+            rect1.top < rect2.bottom &&
+            rect1.bottom > rect2.top
+        );
+    }
+
+
+    // Game over
+    function gameOver() {
+
+        gameRunning = false;
+
+        finalScore.textContent = "Score: " + score;
+
+        gameOverScreen.style.display = "block";
+    }
+
+
+    // Restart
+    restartButton.addEventListener("click", function() {
+        location.reload();
+    });
+
+
+    // Spawn coins
+    setInterval(function() {
+        createCoin();
+    }, 1500);
+
+
+    // Spawn asteroids
+    setInterval(function() {
+        createAsteroid();
+    }, 1200);
+#game::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+
+    background-image:
+        radial-gradient(circle, white 1px, transparent 1px),
+        radial-gradient(circle, white 1px, transparent 1px),
+        radial-gradient(circle, white 2px, transparent 2px);
+
+    background-size: 90px 90px, 140px 140px, 220px 220px;
+    background-position: 10px 20px, 50px 80px, 100px 30px;
+
+    opacity: 0.7;
+    animation: starsMove 12s linear infinite;
+    pointer-events: none;
+}
+
+@keyframes starsMove {
+    from {
+        transform: translateY(0);
+    }
+
+    to {
+        transform: translateY(180px);
+    }
+}#rocket,
+.coin,
+.asteroid,
+.bullet,
+#score,
+#gameOver {
+    z-index: 5;
+}
+
+    moveRocket();
+
+</script>
+
+</body>
+</html>
+}
+
+#rocket {
+    position: absolute;
+    left: 50%;
+    bottom: 80px;
+    transform: translateX(-50%);
+    font-size: 70px;
+    user-select: none;
+}.explosion {
+    position: absolute;
+    font-size: 60px;
+    z-index: 10;
+    pointer-events: none;
+    animation: explode 0.4s ease-out forwards;
+}
+
+@keyframes explode {
+    0% {
+        transform: scale(0.3);
+        opacity: 1;
+    }
+
+    100% {
+        transform: scale(2);
+        opacity: 0;
+    }
+}
